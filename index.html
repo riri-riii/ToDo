@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+ 
+<head>
+    <meta charset="UTF-8">
+    <title>ガントチャート</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/1.0.3/frappe-gantt.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/1.0.3/frappe-gantt.umd.min.js"></script>
+    <style>
+        #controls {
+            padding: 10px;
+            background: white;
+        }
+    </style>
+ 
+ 
+</head>
+ 
+<body>
+    <div id="controls">
+        <input id="taskName" type="text" placeholder="タスク名">
+        <input id="startDate" type="date">
+        <input id="endDate" type="date">
+        <button onclick="addOrUpdateTask()" id="addOrUpdateBtn">タスクを追加</button>
+        <button onclick="deleteTask()" id="deleteBtn" style="display:none;">タスクを削除</button>
+        <button onclick="clearSelection()" id="cancelBtn" style="display:none;">キャンセル</button>
+    </div>
+ 
+    <div id="gantt-container" style="overflow-x: auto; width: 100%;">
+        <svg id="gantt"></svg>
+    </div>
+ 
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            // 初期日付設定
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+ 
+            document.getElementById("startDate").value = today.toISOString().split('T')[0];
+            document.getElementById("endDate").value = tomorrow.toISOString().split('T')[0];
+ 
+            GanttApp.init();
+        });
+ 
+        const GanttApp = (() => {
+            let taskList = [];
+            let ganttInstance = null;
+            let selectedTaskId = null;
+ 
+            // 日付初期化用に保存
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+ 
+            // ガントチャート描画
+            function render() {
+                if (ganttInstance) {
+                    ganttInstance.refresh(taskList);
+                } else {
+                    ganttInstance = new Gantt("#gantt", taskList, {
+                        scroll_to: "start",
+ 
+                        on_click: (task) => {
+                            selectedTaskId = task.id;
+                            document.getElementById("taskName").value = task.name;
+                            document.getElementById("startDate").value = task.start;
+                            document.getElementById("endDate").value = task.end;
+                            document.getElementById("addOrUpdateBtn").textContent = "タスクを更新";
+                            document.getElementById("deleteBtn").style.display = "inline-block";
+                            document.getElementById("cancelBtn").style.display = "inline-block";
+                        },
+ 
+                        popup: ({ task, chart, set_title, set_subtitle, set_details, add_action }) => {
+                            set_title(task.name);
+                            set_subtitle(`${task.start} ～ ${task.end}`);
+                            set_details(`進捗: ${task.progress}%`);
+ 
+                            const isComplete = task.progress === 100;
+                            add_action(isComplete ? "未完了にする" : "完了にする", () => {
+                                task.progress = isComplete ? 0 : 100;
+                                chart.refresh(chart.tasks);
+                            });
+                        }
+                    });
+ 
+                }
+            }
+ 
+            // 追加または更新
+            function addOrUpdateTask() {
+                const nameInput = document.getElementById("taskName");
+                let name = nameInput.value;
+                const start = document.getElementById("startDate").value;
+                const end = document.getElementById("endDate").value;
+ 
+                if (!start || !end) {
+                    alert("日付を入力してください。");
+                    return;
+                }
+                if (!name) {
+                    name = "task";
+                }
+ 
+                if (selectedTaskId) {
+                    const task = taskList.find(t => t.id === selectedTaskId);
+                    if (task) {
+                        task.name = name;
+                        task.start = start;
+                        task.end = end;
+                        clearSelection();
+                    }
+                } else {
+                    const newTask = {
+                        id: 'Task_' + (taskList.length + 1),
+                        name: name,
+                        start: start,
+                        end: end,
+                        progress: 0
+                    };
+                    taskList.push(newTask);
+                }
+                render();
+            }
+ 
+            // 削除
+            function deleteTask() {
+                if (!selectedTaskId) return;
+                taskList = taskList.filter(t => t.id !== selectedTaskId);
+                clearSelection();
+                render();
+            }
+ 
+            // 選択解除（追加モードへ戻す）
+            function clearSelection() {
+                selectedTaskId = null;
+                document.getElementById("taskName").value = "";
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(today.getDate() + 1);
+                document.getElementById("startDate").value = today.toISOString().split('T')[0];
+                document.getElementById("endDate").value = tomorrow.toISOString().split('T')[0];
+                document.getElementById("addOrUpdateBtn").textContent = "タスクを追加";
+                document.getElementById("deleteBtn").style.display = "none";
+                document.getElementById("cancelBtn").style.display = "none";
+            }
+ 
+            return {
+                init: render,
+                addOrUpdateTask,
+                deleteTask,
+                clearSelection
+            };
+        })();
+ 
+        // グローバルから使えるようにする関数
+        function addOrUpdateTask() {
+            GanttApp.addOrUpdateTask();
+        }
+ 
+        function deleteTask() {
+            GanttApp.deleteTask();
+        }
+ 
+        function clearSelection() {
+            GanttApp.clearSelection();
+        }
+    </script>
+</body>
+ 
+</html>
