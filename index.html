@@ -59,7 +59,7 @@ function render() {
     const todayStr = formatDate(new Date());
     if (ganttInstance) {
         ganttInstance.refresh(taskList);
-        ganttInstance.scroll_to(todayStr); // ← 追加
+        ganttInstance.scroll_to(todayStr);
     } else {
         ganttInstance = new Gantt("#gantt", taskList, {
             scroll_to: todayStr, 
@@ -135,7 +135,7 @@ function render() {
 
             async function deleteTask() {
                 if (!selectedTaskId) return;
-                await fetch(`${API_BASE}/tasks/${selectedTaskId}`, {
+                await fetch(`${API_BASE}/tasks/${task.ID}`, {
                     method: 'DELETE'
                 });
                 clearSelection();
