@@ -53,12 +53,16 @@
                 render();
             }
 
-            function render() {
-                if (ganttInstance) {
-                    ganttInstance.refresh(taskList);
-                } else {
-                    ganttInstance = new Gantt("#gantt", taskList, {
-                        scroll_to: "start",
+function render() {
+    // 開始日で昇順ソート
+    taskList.sort((a, b) => new Date(a.start) - new Date(b.start));
+    const todayStr = formatDate(new Date());
+    if (ganttInstance) {
+        ganttInstance.refresh(taskList);
+        ganttInstance.scroll_to(todayStr); // ← 追加
+    } else {
+        ganttInstance = new Gantt("#gantt", taskList, {
+            scroll_to: todayStr, 
                         on_click: (task) => {
                             selectedTaskId = task.ID;
                             document.getElementById("taskName").value = task.name;
