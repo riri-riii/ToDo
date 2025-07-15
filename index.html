@@ -60,7 +60,7 @@
                     ganttInstance = new Gantt("#gantt", taskList, {
                         scroll_to: "start",
                         on_click: (task) => {
-                            selectedTaskId = task.id;
+                            selectedTaskId = task.ID;
                             document.getElementById("taskName").value = task.name;
                             document.getElementById("startDate").value = task.start;
                             document.getElementById("endDate").value = task.end;
@@ -98,14 +98,14 @@
                 if (!start || !end) return alert("日付を入力してください。");
 
                 if (selectedTaskId) {
-                    const task = taskList.find(t => t.id === selectedTaskId);
+                    const task = taskList.find(t => t.ID === selectedTaskId);
                     Object.assign(task, { name, start, end });
                     await updateTask(task);
                     await loadTasks();
                 } else {
                     const utcNow = new Date();
                     const newTask = {
-                        id: new Date(utcNow.getTime() + 9 * 60 * 60 * 1000).toISOString().replace(/[-:T]/g, '').replace('.', '').slice(2, 16),
+                        ID: new Date(utcNow.getTime() + 9 * 60 * 60 * 1000).toISOString().replace(/[-:T]/g, '').replace('.', '').slice(2, 16),
                         name,
                         start,
                         end,
@@ -122,7 +122,7 @@
             }
 
             async function updateTask(task) {
-                await fetch(`${API_BASE}/tasks/${task.id}`, {
+                await fetch(`${API_BASE}/tasks/${task.ID}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(task)
