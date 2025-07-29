@@ -1,177 +1,27 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
-    <meta charset="UTF-8">
-    <title>ガントチャート</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/1.0.3/frappe-gantt.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/1.0.3/frappe-gantt.umd.min.js"></script>
-    <style>
-        #controls {
-            padding: 10px;
-            background: white;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>ガントチャート</title>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/1.0.3/frappe-gantt.css"
+  />
 </head>
-
 <body>
-    <div id="controls">
-        <input id="taskName" type="text" placeholder="タスク名">
-        <input id="startDate" type="date">
-        <input id="endDate" type="date">
-        <button onclick="addOrUpdateTask()" id="addOrUpdateBtn">タスクを追加</button>
-        <button onclick="deleteTask()" id="deleteBtn" style="display:none;">タスクを削除</button>
-        <button onclick="clearSelection()" id="cancelBtn" style="display:none;">キャンセル</button>
-    </div>
+  <div id="controls">
+    <input id="taskName" type="text" placeholder="タスク名">
+    <input id="startDate" type="date">
+    <input id="endDate" type="date">
+    <button id="addOrUpdateBtn">タスクを追加</button>
+    <button id="deleteBtn" style="display:none;">タスクを削除</button>
+    <button id="cancelBtn" style="display:none;">キャンセル</button>
+  </div>
 
-    <div id="gantt-container" style="overflow-x: auto; width: 100%;">
-        <svg id="gantt"></svg>
-    </div>
+  <div id="gantt-container" style="overflow-x: auto; width: 100%;">
+    <svg id="gantt"></svg>
+  </div>
 
-    <script>
-        const API_BASE = 'https://ws9tfsfzbd.execute-api.ap-northeast-1.amazonaws.com';
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(today.getDate() + 1);
-
-            document.getElementById("startDate").value = formatDate(today);
-            document.getElementById("endDate").value = formatDate(tomorrow);
-
-            GanttApp.init();
-        });
-
-        const GanttApp = (() => {
-            let taskList = [];
-            let ganttInstance = null;
-            let selectedTaskId = null;
-
-            async function loadTasks() {
-                const res = await fetch(`${API_BASE}/tasks`);
-                taskList = await res.json();
-                render();
-            }
-
-function render() {
-    // 開始日で昇順ソート
-    taskList.sort((a, b) => new Date(a.start) - new Date(b.start));
-    const todayStr = formatDate(new Date());
-    if (ganttInstance) {
-        ganttInstance.refresh(taskList);
-        ganttInstance.scroll_to(todayStr);
-    } else {
-        ganttInstance = new Gantt("#gantt", taskList, {
-            scroll_to: todayStr, 
-                        on_click: (task) => {
-                            selectedTaskId = task.ID;
-                            document.getElementById("taskName").value = task.name;
-                            document.getElementById("startDate").value = task.start;
-                            document.getElementById("endDate").value = task.end;
-                            document.getElementById("addOrUpdateBtn").textContent = "タスクを更新";
-                            document.getElementById("deleteBtn").style.display = "inline-block";
-                            document.getElementById("cancelBtn").style.display = "inline-block";
-                        },
-                        on_date_change: async (task, start, end) => {
-                            const jstStart = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-                            const jstEnd = new Date(end.getTime() + 24 * 60 * 60 * 1000);
-                            task.start = formatDate(jstStart);
-                            task.end = formatDate(jstEnd);
-                            updateTask(task);
-                        },
-
-                        popup: ({ task, chart, set_title, set_subtitle, set_details, add_action }) => {
-                            set_title(task.name);
-                            set_subtitle(`${task.start} ～ ${task.end}`);
-                            set_details(`進捗: ${task.progress}%`);
-                            const isComplete = task.progress === 100;
-                            add_action(isComplete ? "未完了にする" : "完了にする", () => {
-                                task.progress = isComplete ? 0 : 100;
-                                updateTask(task);
-                                loadTasks();
-                            });
-                        }
-                    });
-                }
-            }
-
-            async function addOrUpdateTask() {
-                const name = document.getElementById("taskName").value || "task";
-                const start = document.getElementById("startDate").value;
-                const end = document.getElementById("endDate").value;
-                if (!start || !end) return alert("日付を入力してください。");
-
-                if (selectedTaskId) {
-                    const task = taskList.find(t => t.ID === selectedTaskId);
-                    Object.assign(task, { name, start, end });
-                    await updateTask(task);
-                    await loadTasks();
-                } else {
-                    const utcNow = new Date();
-                    const newTask = {
-                        ID: new Date(utcNow.getTime() + 9 * 60 * 60 * 1000).toISOString().replace(/[-:T]/g, '').replace('.', '').slice(2, 16),
-                        name,
-                        start,
-                        end,
-                        progress: 0
-                    };
-                    await fetch(`${API_BASE}/tasks`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newTask)
-                    });
-                }
-                clearSelection();
-                await loadTasks();
-            }
-
-            async function updateTask(task) {
-                await fetch(`${API_BASE}/tasks/${task.ID}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(task)
-                });
-            }
-
-            async function deleteTask() {
-                if (!selectedTaskId) return;
-                await fetch(`${API_BASE}/tasks/${task.ID}`, {
-                    method: 'DELETE'
-                });
-                clearSelection();
-                await loadTasks();
-            }
-
-            function clearSelection() {
-                selectedTaskId = null;
-                document.getElementById("taskName").value = "";
-                const today = new Date();
-                const tomorrow = new Date(today);
-                tomorrow.setDate(today.getDate() + 1);
-                document.getElementById("startDate").value = formatDate(today);
-                document.getElementById("endDate").value = formatDate(tomorrow);
-                document.getElementById("addOrUpdateBtn").textContent = "タスクを追加";
-                document.getElementById("deleteBtn").style.display = "none";
-                document.getElementById("cancelBtn").style.display = "none";
-            }
-
-            return {
-                init: loadTasks,
-                addOrUpdateTask,
-                deleteTask,
-                clearSelection,
-                updateTask
-            };
-        })();
-
-        function addOrUpdateTask() { GanttApp.addOrUpdateTask(); }
-        function deleteTask() { GanttApp.deleteTask(); }
-        function clearSelection() { GanttApp.clearSelection(); }
-
-        function formatDate(date) {
-            return date.toISOString().split('T')[0];
-        }
-    </script>
+  <script type="module" src="/main.js"></script>
 </body>
-
 </html>
