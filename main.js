@@ -1,4 +1,4 @@
-import Gantt from 'frappe-gantt';
+import Gantt from './src/index.js';
 
 const API_BASE = 'https://ws9tfsfzbd.execute-api.ap-northeast-1.amazonaws.com';
 
@@ -7,7 +7,7 @@ const GanttApp = (() => {
     let ganttInstance = null;
     let selectedTaskId = null;
 
-    async function loadTasks() {
+    async function loadTasks(scrollToToday = false) {
         const res = await fetch(`${API_BASE}/tasks`);
         const raw = await res.json();
 
@@ -31,7 +31,7 @@ const GanttApp = (() => {
             })
             .sort((a, b) => new Date(a.start) - new Date(b.start));
 
-        render();
+        render({ scrollToToday });
 
         const todayStr = formatDate(today);
         const firstVisibleTask = taskList
@@ -50,17 +50,18 @@ const GanttApp = (() => {
                     const rowTop = row.getBoundingClientRect().top;
                     const scrollOffset = rowTop - containerTop;
 
-                    container.scrollTop += scrollOffset - 10; // 少し余白
+                    container.scrollTop += scrollOffset - 10;
                 }
             }, 100);
         }
     }
 
-
-    function render() {
+    function render({ scrollToToday = false } = {}) {
         if (ganttInstance) {
             ganttInstance.refresh(taskList);
-            ganttInstance.scroll_current();
+            if (scrollToToday) {
+                ganttInstance.scroll_current();
+            }
         } else {
             ganttInstance = new Gantt("#gantt", taskList, {
                 view_mode: 'Day',
@@ -84,7 +85,7 @@ const GanttApp = (() => {
                     task.start = formatDate(jstStart);
                     task.end = formatDate(jstEnd);
                     await GanttApp.updateTask(task);
-                    ganttInstance.refresh(taskList);
+                    // ganttInstance.refresh(taskList);
                 },
                 popup: ({ task, set_title, set_subtitle, set_details, add_action }) => {
                     set_title(task.name);
@@ -106,6 +107,8 @@ const GanttApp = (() => {
                     container_height: window.innerHeight - 45
                 });
             });
+
+            ganttInstance.scroll_current();
         }
     }
 
@@ -181,7 +184,7 @@ const GanttApp = (() => {
     }
 
     return {
-        init: loadTasks,
+        init: () => loadTasks(true), // 初回のみ scroll_current あり
         addOrUpdateTask,
         deleteTask,
         clearSelection,

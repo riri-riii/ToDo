@@ -3,11 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>ガントチャート</title>
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/1.0.3/frappe-gantt.css"
-  />
-</head>
+  <link rel="stylesheet" href="src/styles/gantt.css" />
+  <link id="theme-style" rel="stylesheet" href="src/styles/light.css" />
 <body>
   <div id="controls">
     <input id="taskName" type="text" placeholder="タスク名">
@@ -22,6 +19,6 @@
     <svg id="gantt"></svg>
   </div>
 
-  <script type="module" src="/main.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>
