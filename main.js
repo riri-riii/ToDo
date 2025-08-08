@@ -1,6 +1,11 @@
 import Gantt from './src/index.js';
 
 const API_BASE = 'https://ws9tfsfzbd.execute-api.ap-northeast-1.amazonaws.com';
+const username = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
+
+if (!username) {
+    window.location.href = "index.html";
+}
 
 const GanttApp = (() => {
     let taskList = [];
@@ -8,7 +13,7 @@ const GanttApp = (() => {
     let selectedTaskId = null;
 
     async function loadTasks(scrollToToday = false) {
-        const res = await fetch(`${API_BASE}/tasks`);
+        const res = await fetch(`${API_BASE}/tasks?username=${encodeURIComponent(username)}`);
         const raw = await res.json();
 
         const today = new Date();
@@ -85,7 +90,7 @@ const GanttApp = (() => {
                     task.start = formatDate(jstStart);
                     task.end = formatDate(jstEnd);
                     await GanttApp.updateTask(task);
-                    // ganttInstance.refresh(taskList);
+                    ganttInstance.refresh(taskList);
                 },
                 popup: ({ task, set_title, set_subtitle, set_details, add_action }) => {
                     set_title(task.name);
@@ -125,22 +130,17 @@ const GanttApp = (() => {
         } else {
             const utcNow = new Date();
             const newTask = {
-                id: new Date(utcNow.getTime() + 9 * 60 * 60 * 1000).toISOString().replace(/[-:T]/g, '').replace('.', '').slice(2, 16),
+                ID: new Date(utcNow.getTime() + 9 * 60 * 60 * 1000).toISOString().replace(/[-:T]/g, '').replace('.', '').slice(2, 16),
                 name,
                 start,
                 end,
-                progress: 0
+                progress: 0,
+                user: username
             };
             await fetch(`${API_BASE}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ID: newTask.id,
-                    name: newTask.name,
-                    start: newTask.start,
-                    end: newTask.end,
-                    progress: newTask.progress
-                })
+                body: JSON.stringify(newTask)
             });
         }
         clearSelection();
@@ -156,7 +156,8 @@ const GanttApp = (() => {
                 name: task.name,
                 start: task.start,
                 end: task.end,
-                progress: task.progress
+                progress: task.progress,
+                user: username
             })
         });
     }
@@ -164,7 +165,9 @@ const GanttApp = (() => {
     async function deleteTask() {
         if (!selectedTaskId) return;
         await fetch(`${API_BASE}/tasks/${selectedTaskId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user: username })
         });
         clearSelection();
         await loadTasks();
@@ -184,7 +187,7 @@ const GanttApp = (() => {
     }
 
     return {
-        init: () => loadTasks(true), // 初回のみ scroll_current あり
+        init: () => loadTasks(true),
         addOrUpdateTask,
         deleteTask,
         clearSelection,
@@ -205,6 +208,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("addOrUpdateBtn").addEventListener("click", () => GanttApp.addOrUpdateTask());
     document.getElementById("deleteBtn").addEventListener("click", () => GanttApp.deleteTask());
     document.getElementById("cancelBtn").addEventListener("click", () => GanttApp.clearSelection());
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.removeItem("authUser");
+        sessionStorage.removeItem("authUser");
+        window.location.href = "index.html";
+    });
 });
 
 function formatDate(date) {

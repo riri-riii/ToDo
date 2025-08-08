@@ -2,27 +2,21 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>ログイン</title>
-  <link rel="stylesheet" href="login/login.css" />
+  <title>アカウント登録</title>
+  <link rel="stylesheet" href="login.css" />
 </head>
 <body>
   <div class="login-container">
-    <h1>ログイン</h1>
+    <h1>アカウント登録</h1>
     <input id="username" type="text" placeholder="ユーザー名" />
     <input id="password" type="password" placeholder="パスワード" />
 
-    <div class="options">
-      <label>
-        <input type="checkbox" id="rememberMe" />
-        次回から自動ログインする
-      </label>
-    </div>
-
     <div class="buttons">
-      <button id="loginBtn">ログイン</button>
       <button id="registerBtn">アカウント登録</button>
+      <button id="backBtn">戻る</button>
     </div>
   </div>
-<script type="module" src="login/auth.js"></script>
+
+  <script type="module" src="register.js"></script>
 </body>
 </html>
