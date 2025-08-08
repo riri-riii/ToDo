@@ -129,8 +129,17 @@ const GanttApp = (() => {
             await updateTask(task);
         } else {
             const utcNow = new Date();
+            const jstNow = new Date(utcNow.getTime() + 9 * 60 * 60 * 1000);
+            const yyyymmddhhmmss =
+                jstNow.getFullYear().toString() +
+                String(jstNow.getMonth() + 1).padStart(2, '0') +
+                String(jstNow.getDate()).padStart(2, '0') +
+                String(jstNow.getHours()).padStart(2, '0') +
+                String(jstNow.getMinutes()).padStart(2, '0') +
+                String(jstNow.getSeconds()).padStart(2, '0');
+            const id = `${yyyymmddhhmmss}_${username}`;
             const newTask = {
-                ID: new Date(utcNow.getTime() + 9 * 60 * 60 * 1000).toISOString().replace(/[-:T]/g, '').replace('.', '').slice(2, 16),
+                ID: id,
                 name,
                 start,
                 end,
