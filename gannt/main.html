@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ガントチャート</title>
+  <link rel="stylesheet" href="./src/styles/gantt.css" />
+</head>
+<body>
+  <div id="controls">
+    <input id="taskName" type="text" placeholder="タスク名">
+    <input id="startDate" type="date">
+    <input id="endDate" type="date">
+    <button id="addOrUpdateBtn">タスクを追加</button>
+    <button id="deleteBtn" style="display:none;">タスクを削除</button>
+    <button id="cancelBtn" style="display:none;">キャンセル</button>
+    <button id="logoutBtn" style="float:right;">ログアウト</button>
+  </div>
+
+  <div id="gantt-container" style="overflow-x: auto; width: 100%;">
+    <svg id="gantt"></svg>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
