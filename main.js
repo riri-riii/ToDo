@@ -7,32 +7,52 @@ if (!username) window.location.href = "index.html";
 /* ユーザーごとの ICS 設定キー */
 const ICS_KEY = `icsCalendars:${username}`;
 
-/* ICS プロキシ（API Gateway + Lambda の /ics-proxy を想定） */
-const ICS_PROXY_BASE = `${API_BASE}/ics-proxy`;
+/* ICS プロキシのエンドポイント（Lambda/API Gateway 側が /tasks_icsimport で実装されている前提） */
+const ICS_GET_ENDPOINT = `${API_BASE}/tasks_icsimport`;
 
 const GanttApp = (() => {
-    let awsTasks = [];       /* AWS由来（編集可） */
+    let awsTasks = [];       /* AWS由来（編集可／登録・更新あり） */
     let taskList = [];       /* 表示用（AWS + ICSのマージ） */
     let ganttInstance = null;
-    let selectedTaskId = null;
+    let selectedTaskId = null; /* 画面上の選択状態は CSS セーフIDで保持 */
+
+    /* CSSセレクタ安全なトークンに正規化（. @ / : などを _ に置換。先頭が数字なら接頭辞を付与） */
+    function toCssToken(s) {
+        if (typeof s !== 'string') s = String(s ?? '');
+        let token = s.replace(/[^a-zA-Z0-9_-]/g, '_');
+        if (!/^[a-zA-Z_]/.test(token)) token = `t_${token}`;
+        return token;
+    }
+
+    /* UTF-8 を base64 に（日本語を含む文字列でも失敗しない） */
+    function b64utf8(str) {
+        const bytes = new TextEncoder().encode(str);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin);
+    }
 
     async function loadTasks(scrollToToday = false) {
+        /* AWS（書き込み可能）タスクのみ先に取得して保持 */
         const res = await fetch(`${API_BASE}/tasks?username=${encodeURIComponent(username)}`);
         const raw = await res.json();
 
+        /* 描画用 id は CSS セーフ化。元IDは orig_id として保持（更新・削除に使用） */
         awsTasks = raw.map(t => ({
-            id: t.ID,
+            id: toCssToken(t.ID),
+            orig_id: t.ID,
             name: t.name,
             start: t.start,
             end: t.end,
             progress: t.progress
         }));
 
-        await render({ scrollToToday });
+        await render({ scrollToToday }); /* ← render()の中でICSを読み込む */
         await afterFirstVisibleScroll();
     }
 
     async function afterFirstVisibleScroll(){
+        /* 以降は最初に見えるべきタスクまで縦スクロール */
         const today = new Date();
         const todayStr = formatDate(today);
         const firstVisibleTask = taskList
@@ -57,12 +77,15 @@ const GanttApp = (() => {
     }
 
     async function render({ scrollToToday = false } = {}) {
+        /* 表示期間（過去14日～未来180日） */
         const today = new Date();
         const past = new Date(today); past.setDate(today.getDate() - 14);
         const future = new Date(today); future.setDate(today.getDate() + 180);
 
+        /* ICS（読み取り専用）タスクは render() の中で都度ロード */
         const icsTasks = await loadIcsTasks(past, future);
 
+        /* 表示対象の期間でフィルタしマージ */
         const awsInRange = awsTasks.filter(t => {
             const endDate = new Date(t.end);
             return endDate >= past && endDate <= future;
@@ -83,12 +106,12 @@ const GanttApp = (() => {
                 auto_move_label: false,
                 infinite_padding: true,
                 on_click: (task) => {
+                    /* ICS タスクは編集不可 */
                     if (task.isIcs) {
                         clearSelection();
-                        alert("このイベントは取り込み専用のため編集できません。");
                         return;
                     }
-                    selectedTaskId = task.id;
+                    selectedTaskId = task.id; /* ← ここは CSS セーフID */
                     document.getElementById("taskName").value = task.name;
                     document.getElementById("startDate").value = task.start;
                     document.getElementById("endDate").value = task.end;
@@ -97,9 +120,8 @@ const GanttApp = (() => {
                     document.getElementById("cancelBtn").style.display = "inline-block";
                 },
                 on_date_change: async (task, start, end) => {
+                    /* ICS タスクはドラッグ等で日付変更不可（即時戻す） */
                     if (task.isIcs) {
-                        alert("このイベントは取り込み専用のため移動・期間変更できません。");
-                        ganttInstance.refresh(taskList);
                         return;
                     }
                     const jstStart = new Date(start.getTime() + 24 * 60 * 60 * 1000);
@@ -113,7 +135,7 @@ const GanttApp = (() => {
                     set_title(task.isIcs ? `${task.name}（取り込み）` : task.name);
                     set_subtitle(`${task.start} ～ ${task.end}`);
                     set_details(`進捗: ${task.progress}%`);
-                    if (task.isIcs) return;
+                    if (task.isIcs) return; /* ICS は操作アクション無し */
                     const isComplete = task.progress === 100;
                     add_action(isComplete ? "未完了にする" : "完了にする", async () => {
                         task.progress = isComplete ? 0 : 100;
@@ -142,7 +164,6 @@ const GanttApp = (() => {
         if (selectedTaskId) {
             const task = taskList.find(t => t.id === selectedTaskId);
             if (task && task.isIcs) {
-                alert("このイベントは取り込み専用のため編集できません。");
                 clearSelection();
                 return;
             }
@@ -178,11 +199,12 @@ const GanttApp = (() => {
     }
 
     async function updateTask(task) {
-        await fetch(`${API_BASE}/tasks/${task.id}`, {
+        /* 更新時は orig_id（なければ id）を使用 */
+        await fetch(`${API_BASE}/tasks/${task.orig_id ?? task.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                ID: task.id,
+                ID: task.orig_id ?? task.id,
                 name: task.name,
                 start: task.start,
                 end: task.end,
@@ -196,11 +218,11 @@ const GanttApp = (() => {
         if (!selectedTaskId) return;
         const task = taskList.find(t => t.id === selectedTaskId);
         if (task && task.isIcs) {
-            alert("このイベントは取り込み専用のため削除できません。");
             clearSelection();
             return;
         }
-        await fetch(`${API_BASE}/tasks/${selectedTaskId}`, {
+        const targetId = task?.orig_id ?? selectedTaskId;
+        await fetch(`${API_BASE}/tasks/${targetId}`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user: username })
@@ -222,7 +244,7 @@ const GanttApp = (() => {
         document.getElementById("cancelBtn").style.display = "none";
     }
 
-    /* --- ICS 関連（ical.js 使用版） --------------------------- */
+    /* --- ICS 関連（シンプルパーサ + プロキシ経由） ---------- */
 
     function getIcsSources() {
         try {
@@ -240,114 +262,128 @@ const GanttApp = (() => {
         return url.replace(/^webcal:\/\//i, 'https://');
     }
 
+    /* ここを修正：UTF-8 base64 → 記号除去 → CSS セーフ化 */
     function makeIcsTaskId(url, startStr, endStr, summary) {
         const base = `${url}__${startStr}__${endStr}__${summary}`;
         let enc = '';
-        try { enc = btoa(base); } catch { enc = base; }
-        return `ics_${enc.replace(/[+/=]/g, '')}`;
+        try { enc = b64utf8(base); } catch { enc = base; }
+        const compact = enc.replace(/[+/=]/g, ''); /* URL安全化（/ + = を削る） */
+        return toCssToken(`ics_${compact}`);       /* 最後にCSSセーフ化 */
     }
 
-    function toDateString(d){
-        const y = d.getFullYear();
-        const m = String(d.getMonth()+1).padStart(2,'0');
-        const day = String(d.getDate()).padStart(2,'0');
-        return `${y}-${m}-${day}`;
+    function parseIcsDate(value, isAllDay) {
+        if (!value) return null;
+        if (isAllDay || /^\d{8}$/.test(value)) {
+            const y = value.slice(0, 4);
+            const m = value.slice(4, 6);
+            const d = value.slice(6, 8);
+            return `${y}-${m}-${d}`;
+        }
+        const v = value.endsWith('Z') ? value : `${value}`;
+        const dt = new Date(v.replace(/^(\d{4})(\d{2})(\d{2})T/, '$1-$2-$3T'));
+        if (isNaN(dt.getTime())) return null;
+        return formatDate(dt);
     }
 
-    function clampRangeByDay(start, end, past, future){
-        // 可視期間にざっくり合わせる（必要に応じて拡張可）
-        return (end >= past && end <= future);
+    function unfoldIcsLines(text) {
+        const lines = text.split(/\r?\n/);
+        const out = [];
+        for (const line of lines) {
+            if (/^[ \t]/.test(line) && out.length) {
+                out[out.length - 1] += line.slice(1);
+            } else {
+                out.push(line);
+            }
+        }
+        return out;
+    }
+
+    function parseICS(text) {
+        const lines = unfoldIcsLines(text);
+        const events = [];
+        let cur = null;
+
+        for (const rawLine of lines) {
+            const line = rawLine.trim();
+            if (line === 'BEGIN:VEVENT') {
+                cur = { summary: '', dtstart: null, dtend: null, allDay: false };
+                continue;
+            }
+            if (line === 'END:VEVENT') {
+                if (cur && cur.dtstart) {
+                    let startStr = parseIcsDate(cur.dtstart.value, cur.dtstart.allDay);
+                    let endStr = parseIcsDate((cur.dtend && cur.dtend.value) || cur.dtstart.value, cur.dtend ? cur.dtend.allDay : cur.dtstart.allDay);
+                    /* 終日（VALUE=DATE）は DTEND 非包含のため -1 日補正 */
+                    if ((cur.dtend && cur.dtend.allDay) || (cur.dtstart && cur.dtstart.allDay)) {
+                        const sd = new Date(startStr);
+                        const ed = new Date(endStr);
+                        if (!isNaN(ed.getTime()) && ed.getTime() > sd.getTime()) {
+                            ed.setDate(ed.getDate() - 1);
+                            endStr = formatDate(ed);
+                        }
+                    }
+                    events.push({
+                        summary: cur.summary || 'ICSイベント',
+                        start: startStr,
+                        end: endStr
+                    });
+                }
+                cur = null;
+                continue;
+            }
+            if (!cur) continue;
+
+            if (line.startsWith('SUMMARY')) {
+                const idx = line.indexOf(':');
+                cur.summary = idx >= 0 ? line.slice(idx + 1) : line;
+                continue;
+            }
+            if (line.startsWith('DTSTART')) {
+                const idx = line.indexOf(':');
+                const prop = line.slice(0, idx);
+                const val = idx >= 0 ? line.slice(idx + 1) : '';
+                const allDay = /VALUE=DATE/.test(prop);
+                cur.dtstart = { value: val, allDay };
+                cur.allDay = cur.allDay || allDay;
+                continue;
+            }
+            if (line.startsWith('DTEND')) {
+                const idx = line.indexOf(':');
+                const prop = line.slice(0, idx);
+                const val = idx >= 0 ? line.slice(idx + 1) : '';
+                const allDay = /VALUE=DATE/.test(prop);
+                cur.dtend = { value: val, allDay };
+                cur.allDay = cur.allDay || allDay;
+                continue;
+            }
+        }
+        return events;
     }
 
     async function loadIcsTasks(past, future) {
         const sources = getIcsSources();
-        const out = [];
-
+        const all = [];
         for (const src of sources) {
             const normalized = normalizeIcsUrl(src);
-            const proxied = `${ICS_PROXY_BASE}?u=${encodeURIComponent(btoa(normalized))}`;
             try {
+                /* 直接 fetch せずプロキシ経由。u は base64 で渡す（Lambda が base64 前提） */
+                const b64 = b64utf8(normalized);
+                const proxied = `${ICS_GET_ENDPOINT}?u=${encodeURIComponent(b64)}`;
                 const res = await fetch(proxied, { method: 'GET' });
                 if (!res.ok) throw new Error(`proxy status ${res.status}`);
-                const icsText = await res.text();
+                const text = await res.text();
 
-                // ical.js 解析
-                const jCalData = ICAL.parse(icsText);
-                const comp = new ICAL.Component(jCalData);
-                const vevents = comp.getAllSubcomponents('vevent');
-
-                for (const sub of vevents) {
-                    const ev = new ICAL.Event(sub);
-
-                    // 単発
-                    if (!ev.isRecurring()) {
-                        const start = ev.startDate.toJSDate();
-                        const endJs = ev.endDate?.toJSDate();
-                        if (!endJs) continue;
-
-                        let end = new Date(endJs.getTime());
-                        // 終日（exclusive DTEND のため -1日）
-                        if (ev.startDate.isDate || ev.endDate?.isDate) {
-                            end.setDate(end.getDate() - 1);
-                        }
-
-                        if (!clampRangeByDay(start, end, past, future)) continue;
-
-                        const startStr = toDateString(start);
-                        const endStr = toDateString(end);
-                        out.push({
-                            id: makeIcsTaskId(normalized, startStr, endStr, ev.summary || 'ICSイベント'),
-                            name: ev.summary || 'ICSイベント',
-                            start: startStr,
-                            end: endStr,
-                            progress: 0,
-                            isIcs: true,
-                            custom_class: 'ics-task'
-                        });
-                        continue;
-                    }
-
-                    // 繰り返し
-                    const iter = new ICAL.RecurExpansion({ component: ev.component, dtstart: ev.startDate });
-                    const duration = ev.duration; // 例: 終日なら P1D
-                    let safety = 5000; // 無限ループ防止
-
-                    while (safety-- > 0) {
-                        const next = iter.next();
-                        if (!next) break;
-
-                        const occStart = next.toJSDate();
-                        if (occStart > future) break;  // 未来側に出たら打ち切り
-                        if (occStart < past) continue; // 過去側はスキップ
-
-                        // 終了は開始 + 期間（duration が無いケースは endDate から計算）
-                        let occEnd;
-                        if (duration) {
-                            const tmp = next.clone();
-                            tmp.addDuration(duration);
-                            occEnd = tmp.toJSDate();
-                        } else if (ev.endDate) {
-                            const baseDur = ev.endDate.toJSDate().getTime() - ev.startDate.toJSDate().getTime();
-                            occEnd = new Date(occStart.getTime() + Math.max(baseDur, 0));
-                        } else {
-                            // 終了が無い異常ケースは 1 日にしておく
-                            occEnd = new Date(occStart.getTime());
-                            occEnd.setDate(occEnd.getDate() + 1);
-                        }
-
-                        // 終日（isDate）なら -1 日で表示上の最終日に合わせる
-                        if (ev.startDate.isDate || ev.endDate?.isDate) {
-                            occEnd.setDate(occEnd.getDate() - 1);
-                        }
-
-                        const startStr = toDateString(occStart);
-                        const endStr = toDateString(occEnd);
-
-                        out.push({
-                            id: makeIcsTaskId(normalized, startStr, endStr, ev.summary || 'ICSイベント'),
-                            name: ev.summary || 'ICSイベント',
-                            start: startStr,
-                            end: endStr,
+                const events = parseICS(text);
+                for (const ev of events) {
+                    const endDate = new Date(ev.end);
+                    /* 終了日が表示期間に入るものを採用（要件に合わせ適宜変更可） */
+                    if (endDate >= past && endDate <= future) {
+                        const id = makeIcsTaskId(normalized, ev.start, ev.end, ev.summary);
+                        all.push({
+                            id, /* CSS セーフID */
+                            name: ev.summary,
+                            start: ev.start,
+                            end: ev.end,
                             progress: 0,
                             isIcs: true,
                             custom_class: 'ics-task'
@@ -358,10 +394,7 @@ const GanttApp = (() => {
                 console.warn('ICS読み込み失敗:', normalized, e);
             }
         }
-
-        // 開始日昇順でソート
-        out.sort((a, b) => new Date(a.start) - new Date(b.start));
-        return out;
+        return all.sort((a, b) => new Date(a.start) - new Date(b.start));
     }
 
     /* ---------------------------------------------------------- */
@@ -389,6 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("deleteBtn").addEventListener("click", () => GanttApp.deleteTask());
     document.getElementById("cancelBtn").addEventListener("click", () => GanttApp.clearSelection());
 
+    /* ≡ メニュー制御 */
     const menuBtn = document.getElementById('menuBtn');
     const menu = document.getElementById('menuDropdown');
     const menuLogout = document.getElementById('menuLogout');

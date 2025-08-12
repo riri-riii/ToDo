@@ -67,7 +67,7 @@ btnAdd.addEventListener('click', () => {
 });
 
 btnBack.addEventListener('click', () => {
-  window.location.href = '../main.html';
+  window.location.href = './main.html';
 });
 
 render();
