@@ -5,19 +5,107 @@
   <title>ガントチャート</title>
   <link rel="stylesheet" href="./src/styles/gantt.css" />
   <style>
-    #controls{display:flex; gap:8px; align-items:center; position:relative; z-index:1000;}
-    #menuContainer{position:relative; margin-left:auto; z-index:1001;}
-    #menuBtn{font-size:20px; line-height:1; padding:6px 10px; cursor:pointer;}
-    .dropdown{
-      position:absolute;
-      right:0;
-      top:100%;
+    :root{
+      --bg:#ffffff;
+      --bg-soft:#f9fafb;
+      --border:#e5e7eb;
+      --text:#111827;
+      --muted:#6b7280;
+      --primary:#2563eb;
+      --primary-600:#1d4ed8;
+      --danger-bg:#fff1f2;
+      --danger-border:#fecaca;
+      --danger-text:#991b1b;
+      --shadow:0 1px 2px rgba(0,0,0,.06);
+      --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+      --radius:12px;
+      --radius-sm:10px;
+      --control-h:38px;
+    }
+    html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans JP",sans-serif;}
+
+    /* コントロール群（上部バー） */
+    #controls{
+      display:flex; gap:10px; align-items:center;
+      position:relative; z-index:1000;
+      padding:10px 12px;
+      border-bottom:1px solid var(--border);
+      background:linear-gradient(to bottom, #fff, #fdfdfd);
+      flex-wrap:wrap; /* 画面が狭い時は折り返し */
+    }
+
+    /* 入力欄の共通スタイル */
+    #controls input[type="text"],
+    #controls input[type="date"]{
+      height:var(--control-h);
+      padding:1px 1px;
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
       background:#fff;
-      border:1px solid #e5e7eb;
-      border-radius:8px;
-      box-shadow:0 8px 24px rgba(0,0,0,.12);
+      box-shadow:var(--shadow);
+      outline:none;
+      transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    #controls input[type="text"]{
+      width: 300;
+    }
+    #controls input::placeholder{color:var(--muted);}
+    #controls input:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,.15), var(--shadow);
+      background:#fff;
+    }
+
+    /* ボタンの共通スタイル */
+    #controls button{
+      height:var(--control-h);
+      padding:8px 14px;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--text);
+      box-shadow:var(--shadow);
+      cursor:pointer;
+      line-height:1;
+      white-space:nowrap;
+      transition:transform .02s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease, color .15s ease;
+    }
+    #controls button:hover{background:var(--bg-soft);}
+    #controls button:active{transform:translateY(1px);}
+    /* 主要ボタン（追加/更新） */
+    #addOrUpdateBtn{
+      background:var(--primary);
+      border-color:var(--primary-600);
+      color:#fff;
+    }
+    #addOrUpdateBtn:hover{background:var(--primary-600);}
+    /* 削除ボタンは淡い危険色に */
+    #deleteBtn{
+      background:var(--danger-bg);
+      border-color:var(--danger-border);
+      color:var(--danger-text);
+    }
+    /* キャンセルはグレー */
+    #cancelBtn{background:#fff;}
+    #cancelBtn:hover{background:var(--bg-soft);}
+
+    /* ≡ メニュー */
+    #menuContainer{position:relative; margin-left:auto; z-index:1001;}
+    #menuBtn{
+      font-size:18px;
+      width:var(--control-h);
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:0;
+      border-radius:var(--radius-sm);
+    }
+    .dropdown{
+      position:absolute; right:0; top:calc(100% + 6px);
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow-lg);
       padding:6px;
-      min-width:180px;
+      min-width:200px;
       display:none;
       z-index:9999;
     }
@@ -28,15 +116,31 @@
       background:transparent;
       padding:10px 12px;
       text-align:left;
-      border-radius:6px;
+      border-radius:10px;
       cursor:pointer;
       font-size:14px;
+      box-shadow:none;
+      height:auto;
     }
     .dropdown button:hover{background:#f3f4f6;}
-    .bar-wrapper.ics-task .bar{fill:#90caf9; stroke:#1976d2;}
+
+    /* ICSタスクの見た目（wrapperに custom_class が付くため子要素セレクタで指定） */
+    .bar-wrapper.ics-task .bar{fill:#bae0ff; stroke:#95b5d5;}
     .bar-wrapper.ics-task .bar-progress{fill:#1976d2;}
-    .bar-wrapper.ics-task .bar-label{fill:#0d47a1;}
+    .bar-wrapper.ics-task .bar-label{fill:#124ba1;}
     .bar-wrapper.ics-task .handle{display:none;}
+
+    /* ガント領域 */
+    #gantt-container{
+      overflow:auto; width:100%; height:calc(100vh - 70px);
+      background:#fff;
+    }
+
+    /* 小さめ画面での調整 */
+    @media (max-width: 640px){
+      #controls{gap:8px;}
+      #gantt-container{height:calc(100vh - 120px);}
+    }
   </style>
 </head>
 <body>
@@ -44,12 +148,12 @@
     <input id="taskName" type="text" placeholder="タスク名">
     <input id="startDate" type="date">
     <input id="endDate" type="date">
-    <button id="addOrUpdateBtn">タスクを追加</button>
-    <button id="deleteBtn" style="display:none;">タスクを削除</button>
-    <button id="cancelBtn" style="display:none;">キャンセル</button>
+    <button id="addOrUpdateBtn" type="button">タスクを追加</button>
+    <button id="deleteBtn" type="button" style="display:none;">タスクを削除</button>
+    <button id="cancelBtn" type="button" style="display:none;">キャンセル</button>
 
     <span id="menuContainer">
-      <button id="menuBtn" aria-label="メニュー" title="メニュー">≡</button>
+      <button id="menuBtn" type="button" aria-label="メニュー" title="メニュー">≡</button>
       <div id="menuDropdown" class="dropdown" role="menu">
         <button id="menuIcs" role="menuitem">ics取り込み設定</button>
         <button id="menuLogout" role="menuitem">ログアウト</button>
@@ -57,12 +161,11 @@
     </span>
   </div>
 
-  <div id="gantt-container" style="overflow: auto; width: 100%; height: calc(100vh - 56px);">
+  <div id="gantt-container">
     <svg id="gantt"></svg>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
-<script type="module" src="main.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>
