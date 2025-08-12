@@ -4,6 +4,40 @@
   <meta charset="UTF-8" />
   <title>ガントチャート</title>
   <link rel="stylesheet" href="./src/styles/gantt.css" />
+  <style>
+    #controls{display:flex; gap:8px; align-items:center; position:relative; z-index:1000;}
+    #menuContainer{position:relative; margin-left:auto; z-index:1001;}
+    #menuBtn{font-size:20px; line-height:1; padding:6px 10px; cursor:pointer;}
+    .dropdown{
+      position:absolute;
+      right:0;
+      top:100%;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      box-shadow:0 8px 24px rgba(0,0,0,.12);
+      padding:6px;
+      min-width:180px;
+      display:none;
+      z-index:9999;
+    }
+    .dropdown.open{display:block;}
+    .dropdown button{
+      width:100%;
+      border:0;
+      background:transparent;
+      padding:10px 12px;
+      text-align:left;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .dropdown button:hover{background:#f3f4f6;}
+    .bar-wrapper.ics-task .bar{fill:#90caf9; stroke:#1976d2;}
+    .bar-wrapper.ics-task .bar-progress{fill:#1976d2;}
+    .bar-wrapper.ics-task .bar-label{fill:#0d47a1;}
+    .bar-wrapper.ics-task .handle{display:none;}
+  </style>
 </head>
 <body>
   <div id="controls">
@@ -13,14 +47,22 @@
     <button id="addOrUpdateBtn">タスクを追加</button>
     <button id="deleteBtn" style="display:none;">タスクを削除</button>
     <button id="cancelBtn" style="display:none;">キャンセル</button>
-    <button id="logoutBtn" style="float:right;">ログアウト</button>
+
+    <span id="menuContainer">
+      <button id="menuBtn" aria-label="メニュー" title="メニュー">≡</button>
+      <div id="menuDropdown" class="dropdown" role="menu">
+        <button id="menuIcs" role="menuitem">ics取り込み設定</button>
+        <button id="menuLogout" role="menuitem">ログアウト</button>
+      </div>
+    </span>
   </div>
 
-  <div id="gantt-container" style="overflow-x: auto; width: 100%;">
+  <div id="gantt-container" style="overflow: auto; width: 100%; height: calc(100vh - 56px);">
     <svg id="gantt"></svg>
   </div>
 
+  <!-- ical.js をグローバル読み込み（必ず main.js より前） -->
+  <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
   <script type="module" src="main.js"></script>
 </body>
-<!-- Copyright (c) 2024 Frappe Technologies Pvt. Ltd. -->
 </html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ICS取り込み設定</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:16px;}
+    .wrap{max-width:720px; margin:0 auto;}
+    .row{display:flex; gap:8px; align-items:center; margin-bottom:12px;}
+    button{cursor:pointer; padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff;}
+    button:hover{background:#f9fafb;}
+    ul{list-style:none; padding:0; margin:16px 0;}
+    li{display:flex; align-items:center; justify-content:space-between; border:1px solid #e5e7eb; padding:10px 12px; border-radius:8px; margin-bottom:10px;}
+    .muted{color:#6b7280;}
+    .danger{border-color:#fecaca; background:#fff1f2;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ICS取り込み設定</h1>
+    <div class="row">
+      <button id="btnAdd">カレンダーの新規取り込み</button>
+      <button id="btnBack">ガントへ戻る</button>
+    </div>
+
+    <h2 class="muted">取り込み設定中のカレンダー一覧</h2>
+    <ul id="icsList"></ul>
+  </div>
+
+  <script type="module" src="/src/ics_setting.js"></script>
+</body>
+</html>
