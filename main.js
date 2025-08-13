@@ -195,7 +195,7 @@ const GanttApp = (() => {
             });
         }
         clearSelection();
-        await loadTasks();
+        // await loadTasks();
     }
 
     async function updateTask(task) {
@@ -427,6 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const menu = document.getElementById('menuDropdown');
     const menuLogout = document.getElementById('menuLogout');
     const menuIcs = document.getElementById('menuIcs');
+    const menuExport = document.getElementById('menuExport');
 
     menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -441,6 +442,53 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     menuIcs.addEventListener('click', () => {
         window.location.href = "ics_setting.html";
+    });
+
+    /* ==== エクスポート（webcalリンクを表示） ==== */
+    const exportModal = document.getElementById('exportModal');
+    const exportBackdrop = document.getElementById('exportBackdrop');
+    const webcalInput = document.getElementById('webcalLink');
+    const httpsLink = document.getElementById('httpsLink');
+    const copyWebcal = document.getElementById('copyWebcal');
+    const openWebcal = document.getElementById('openWebcal');
+    const closeExport = document.getElementById('closeExport');
+
+    function buildExportLinks(){
+        const https = `${API_BASE}/Tasks_icsexport?username=${encodeURIComponent(username)}`;
+        const webcal = https.replace(/^https?:\/\//i, 'webcal://');
+        return { https, webcal };
+    }
+    function showExportModal(){
+        const { https, webcal } = buildExportLinks();
+        webcalInput.value = webcal;
+        httpsLink.href = https;
+        exportModal.classList.remove('hidden');
+        webcalInput.focus();
+        webcalInput.select();
+    }
+    function hideExportModal(){
+        exportModal.classList.add('hidden');
+    }
+
+    menuExport.addEventListener('click', () => {
+        menu.classList.remove('open');
+        showExportModal();
+    });
+    exportBackdrop.addEventListener('click', hideExportModal);
+    closeExport.addEventListener('click', hideExportModal);
+    copyWebcal.addEventListener('click', async () => {
+        try{
+            await navigator.clipboard.writeText(webcalInput.value);
+            copyWebcal.textContent = 'コピー済み';
+            setTimeout(()=> copyWebcal.textContent = 'コピー', 1200);
+        }catch{
+            webcalInput.select();
+            document.execCommand('copy');
+        }
+    });
+    openWebcal.addEventListener('click', () => {
+        const { webcal } = buildExportLinks();
+        window.location.href = webcal; /* ブラウザにより動作差あり */
     });
 });
 

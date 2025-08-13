@@ -141,6 +141,34 @@
       #controls{gap:8px;}
       #gantt-container{height:calc(100vh - 120px);}
     }
+
+    /* ===== エクスポート用モーダル ===== */
+    .hidden{display:none !important;}
+    .modal{
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10000;
+    }
+    .modal .backdrop{
+      position:absolute; inset:0; background:rgba(0,0,0,.35);
+    }
+    .modal .card{
+      position:relative; background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-lg);
+      width:min(720px, 92vw); padding:18px;
+    }
+    .modal h3{margin:0 0 8px; font-size:18px;}
+    .muted{color:var(--muted); font-size:13px; margin:2px 0 12px;}
+    .row{display:flex; gap:8px; align-items:center;}
+    .row input{
+      flex:1 1 auto; height:40px; border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-family:ui-monospace,Menlo,Consolas,monospace;
+      overflow:hidden; text-overflow:ellipsis;
+    }
+    .row button{height:40px;}
+    .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px;}
+    .link{color:#2563eb; text-decoration:none;}
+    .link:hover{text-decoration:underline;}
+    @media (max-width:640px){
+      .row{flex-direction:column; align-items:stretch;}
+      .actions{justify-content:stretch; flex-direction:column;}
+    }
   </style>
 </head>
 <body>
@@ -156,6 +184,7 @@
       <button id="menuBtn" type="button" aria-label="メニュー" title="メニュー">≡</button>
       <div id="menuDropdown" class="dropdown" role="menu">
         <button id="menuIcs" role="menuitem">ics取り込み設定</button>
+        <button id="menuExport" role="menuitem">タスクのエクスポート</button>
         <button id="menuLogout" role="menuitem">ログアウト</button>
       </div>
     </span>
@@ -163,6 +192,24 @@
 
   <div id="gantt-container">
     <svg id="gantt"></svg>
+  </div>
+
+  <!-- エクスポート用モーダル -->
+  <div id="exportModal" class="modal hidden" aria-modal="true" role="dialog">
+    <div class="backdrop" id="exportBackdrop"></div>
+    <div class="card">
+      <h3>タスクのエクスポート</h3>
+      <p class="muted">以下のリンクをカレンダーに登録すると、ガントのタスクを購読できます（終日・空き時間として扱われます）。</p>
+      <div class="row" style="margin-bottom:8px;">
+        <input id="webcalLink" type="text" readonly value="">
+        <button id="copyWebcal">コピー</button>
+      </div>
+      <p class="muted">ブラウザで <code>webcal://</code> が開けない場合は <a id="httpsLink" class="link" href="#" target="_blank" rel="noopener">https 版を開く</a> を使用してください。</p>
+      <div class="actions">
+        <button id="openWebcal">このリンクを開く</button>
+        <button id="closeExport">閉じる</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
