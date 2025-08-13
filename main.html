@@ -46,9 +46,7 @@
       outline:none;
       transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
     }
-    #controls input[type="text"]{
-      width: 300;
-    }
+    #controls input[type="text"]{ width: 300; }
     #controls input::placeholder{color:var(--muted);}
     #controls input:focus{
       border-color:var(--primary);
@@ -72,20 +70,9 @@
     }
     #controls button:hover{background:var(--bg-soft);}
     #controls button:active{transform:translateY(1px);}
-    /* 主要ボタン（追加/更新） */
-    #addOrUpdateBtn{
-      background:var(--primary);
-      border-color:var(--primary-600);
-      color:#fff;
-    }
+    #addOrUpdateBtn{background:var(--primary); border-color:var(--primary-600); color:#fff;}
     #addOrUpdateBtn:hover{background:var(--primary-600);}
-    /* 削除ボタンは淡い危険色に */
-    #deleteBtn{
-      background:var(--danger-bg);
-      border-color:var(--danger-border);
-      color:var(--danger-text);
-    }
-    /* キャンセルはグレー */
+    #deleteBtn{background:var(--danger-bg); border-color:var(--danger-border); color:var(--danger-text);}
     #cancelBtn{background:#fff;}
     #cancelBtn:hover{background:var(--bg-soft);}
 
@@ -124,32 +111,19 @@
     }
     .dropdown button:hover{background:#f3f4f6;}
 
-    /* ICSタスクの見た目（wrapperに custom_class が付くため子要素セレクタで指定） */
+    /* ICSタスクの見た目 */
     .bar-wrapper.ics-task .bar{fill:#bae0ff; stroke:#95b5d5;}
     .bar-wrapper.ics-task .bar-progress{fill:#1976d2;}
     .bar-wrapper.ics-task .bar-label{fill:#124ba1;}
     .bar-wrapper.ics-task .handle{display:none;}
 
     /* ガント領域 */
-    #gantt-container{
-      overflow:auto; width:100%; height:calc(100vh - 70px);
-      background:#fff;
-    }
-
-    /* 小さめ画面での調整 */
-    @media (max-width: 640px){
-      #controls{gap:8px;}
-      #gantt-container{height:calc(100vh - 120px);}
-    }
+    #gantt-container{overflow:auto; width:100%; height:calc(100vh - 70px); background:#fff;}
 
     /* ===== エクスポート用モーダル ===== */
     .hidden{display:none !important;}
-    .modal{
-      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10000;
-    }
-    .modal .backdrop{
-      position:absolute; inset:0; background:rgba(0,0,0,.35);
-    }
+    .modal{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10000; }
+    .modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.35); }
     .modal .card{
       position:relative; background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-lg);
       width:min(720px, 92vw); padding:18px;
@@ -166,6 +140,8 @@
     .link{color:#2563eb; text-decoration:none;}
     .link:hover{text-decoration:underline;}
     @media (max-width:640px){
+      #controls{gap:8px;}
+      #gantt-container{height:calc(100vh - 120px);}
       .row{flex-direction:column; align-items:stretch;}
       .actions{justify-content:stretch; flex-direction:column;}
     }
@@ -199,14 +175,30 @@
     <div class="backdrop" id="exportBackdrop"></div>
     <div class="card">
       <h3>タスクのエクスポート</h3>
-      <p class="muted">以下のリンクをカレンダーに登録すると、ガントのタスクを購読できます（終日・空き時間として扱われます）。</p>
+      <p class="muted">
+        Outlook は <strong>https の購読</strong>を推奨します（Outlook on the web は webcal 非対応）。<br>
+        Apple カレンダーなどは webcal が便利です。
+      </p>
+
+      <!-- webcal 行（Apple 等向け） -->
       <div class="row" style="margin-bottom:8px;">
         <input id="webcalLink" type="text" readonly value="">
-        <button id="copyWebcal">コピー</button>
+        <button id="copyWebcal">webcal をコピー</button>
       </div>
-      <p class="muted">ブラウザで <code>webcal://</code> が開けない場合は <a id="httpsLink" class="link" href="#" target="_blank" rel="noopener">https 版を開く</a> を使用してください。</p>
+
+      <!-- https 行（Outlook 向け） -->
+      <div class="row" style="margin-bottom:8px;">
+        <input id="httpsLinkInput" type="text" readonly value="">
+        <button id="copyHttps">https をコピー</button>
+      </div>
+
+      <p class="muted">
+        Outlook on the web: カレンダー →「追加」→「Web から追加」→ 上の <strong>https</strong> を貼り付け → 保存（自動更新）。<br>
+        うまく開かない場合は <a id="httpsLink" class="link" href="#" target="_blank" rel="noopener">https 版を開く</a> を使ってください。
+      </p>
       <div class="actions">
-        <button id="openWebcal">このリンクを開く</button>
+        <button id="openWebcal">webcal を開く（Apple向け）</button>
+        <button id="openOutlook">Outlook で開く（https）</button>
         <button id="closeExport">閉じる</button>
       </div>
     </div>
