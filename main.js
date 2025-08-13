@@ -122,6 +122,7 @@ const GanttApp = (() => {
                 on_date_change: async (task, start, end) => {
                     /* ICS タスクはドラッグ等で日付変更不可（即時戻す） */
                     if (task.isIcs) {
+                        await loadTasks();
                         return;
                     }
                     const jstStart = new Date(start.getTime() + 24 * 60 * 60 * 1000);
