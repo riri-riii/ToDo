@@ -175,30 +175,23 @@
     <div class="backdrop" id="exportBackdrop"></div>
     <div class="card">
       <h3>タスクのエクスポート</h3>
-      <p class="muted">
-        Outlook は <strong>https の購読</strong>を推奨します（Outlook on the web は webcal 非対応）。<br>
-        Apple カレンダーなどは webcal が便利です。
-      </p>
 
-      <!-- webcal 行（Apple 等向け） -->
-      <div class="row" style="margin-bottom:8px;">
-        <input id="webcalLink" type="text" readonly value="">
-        <button id="copyWebcal">webcal をコピー</button>
-      </div>
-
-      <!-- https 行（Outlook 向け） -->
+      <!-- https 行 -->
       <div class="row" style="margin-bottom:8px;">
         <input id="httpsLinkInput" type="text" readonly value="">
         <button id="copyHttps">https をコピー</button>
       </div>
 
+      <!-- webcal 行 -->
+      <div class="row" style="margin-bottom:8px;">
+        <input id="webcalLink" type="text" readonly value="">
+        <button id="copyWebcal">webcal をコピー</button>
+      </div>
+
       <p class="muted">
-        Outlook on the web: カレンダー →「追加」→「Web から追加」→ 上の <strong>https</strong> を貼り付け → 保存（自動更新）。<br>
-        うまく開かない場合は <a id="httpsLink" class="link" href="#" target="_blank" rel="noopener">https 版を開く</a> を使ってください。
+        直接確認したい場合は <a id="httpsLink" class="link" href="#" target="_blank" rel="noopener">.icsファイルダウンロード</a>
       </p>
       <div class="actions">
-        <button id="openWebcal">webcal を開く（Apple向け）</button>
-        <button id="openOutlook">Outlook で開く（https）</button>
         <button id="closeExport">閉じる</button>
       </div>
     </div>

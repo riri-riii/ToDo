@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     menuIcs.addEventListener('click', () => { window.location.href = "ics_setting.html"; });
 
-    /* ==== エクスポート（webcal/https 両対応） ==== */
+    /* ==== エクスポート（webcal/https 表示 & コピーのみ） ==== */
     const exportModal = document.getElementById('exportModal');
     const exportBackdrop = document.getElementById('exportBackdrop');
     const webcalInput = document.getElementById('webcalLink');
@@ -371,8 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const httpsLink = document.getElementById('httpsLink');
     const copyWebcal = document.getElementById('copyWebcal');
     const copyHttps = document.getElementById('copyHttps');
-    const openWebcal = document.getElementById('openWebcal');
-    const openOutlook = document.getElementById('openOutlook');
     const closeExport = document.getElementById('closeExport');
 
     function buildExportLinks(){
@@ -386,7 +384,6 @@ document.addEventListener('DOMContentLoaded', () => {
         httpsInput.value = https;
         httpsLink.href = https;
         exportModal.classList.remove('hidden');
-        // Windows/Outlook 多め想定なら https をデフォルト選択
         httpsInput.focus(); httpsInput.select();
     }
     function hideExportModal(){ exportModal.classList.add('hidden'); }
@@ -402,15 +399,6 @@ document.addEventListener('DOMContentLoaded', () => {
     copyHttps.addEventListener('click', async () => {
         try{ await navigator.clipboard.writeText(httpsInput.value); copyHttps.textContent = 'コピー済み'; setTimeout(()=> copyHttps.textContent = 'https をコピー', 1200); }
         catch{ httpsInput.select(); document.execCommand('copy'); }
-    });
-
-    openWebcal.addEventListener('click', () => {
-        const { webcal } = buildExportLinks();
-        window.location.href = webcal; // Apple 等向け
-    });
-    openOutlook.addEventListener('click', () => {
-        const { https } = buildExportLinks();
-        window.open(https, '_blank', 'noopener'); // httpsを開く（Outlook web/デスクトップの購読で使用）
     });
 });
 
