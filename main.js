@@ -4,12 +4,6 @@ const API_BASE = 'https://ws9tfsfzbd.execute-api.ap-northeast-1.amazonaws.com';
 const username = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
 if (!username) window.location.href = "index.html";
 
-/* ユーザーごとの ICS 設定キー */
-const ICS_KEY = `icsCalendars:${username}`;
-
-/* 既存: ICS 取得プロキシ */
-const ICS_GET_ENDPOINT = `${API_BASE}/tasks_icsimport`;
-
 const GanttApp = (() => {
     let awsTasks = [];
     let taskList = [];
@@ -47,7 +41,7 @@ const GanttApp = (() => {
         await afterFirstVisibleScroll();
     }
 
-    async function afterFirstVisibleScroll(){
+    async function afterFirstVisibleScroll() {
         const today = new Date();
         const todayStr = formatDate(today);
         const firstVisibleTask = taskList
@@ -109,8 +103,12 @@ const GanttApp = (() => {
                 },
                 on_date_change: async (task, start, end) => {
                     if (task.isIcs) { return; }
-                    const jstStart = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-                    const jstEnd = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+                    // Ensure start and end are Date objects
+                    const startDate = (start instanceof Date) ? start : new Date(start);
+                    const endDate = (end instanceof Date) ? end : new Date(end);
+                    // JST変換を共通関数で処理
+                    const jstStart = toJstDate(startDate);
+                    const jstEnd = toJstDate(endDate);
                     task.start = formatDate(jstStart);
                     task.end = formatDate(jstEnd);
                     await GanttApp.updateTask(task);
@@ -138,6 +136,11 @@ const GanttApp = (() => {
         }
     }
 
+    function toJstDate(date) {
+        // Converts a Date object to JST (UTC+9)
+        return new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    }
+
     async function addOrUpdateTask() {
         const name = document.getElementById("taskName").value || "task";
         const start = document.getElementById("startDate").value;
@@ -151,7 +154,7 @@ const GanttApp = (() => {
             await updateTask(task);
         } else {
             const utcNow = new Date();
-            const jstNow = new Date(utcNow.getTime() + 9 * 60 * 60 * 1000);
+            const jstNow = toJstDate(utcNow);
             const yyyymmddhhmmss =
                 jstNow.getFullYear().toString() +
                 String(jstNow.getMonth() + 1).padStart(2, '0') +
@@ -212,15 +215,25 @@ const GanttApp = (() => {
         document.getElementById("cancelBtn").style.display = "none";
     }
 
-    /* ==== ICS 取り込み（既存） ==== */
-    function getIcsSources() {
+    /* ==== ICS 取り込み：DynamoDB Tasks_ics から一覧を取得 ==== */
+    async function getIcsSources() {
         try {
-            const raw = localStorage.getItem(ICS_KEY);
-            if (!raw) return [];
-            const arr = JSON.parse(raw);
-            return Array.isArray(arr) ? arr : [];
-        } catch { return []; }
+            const url = `${API_BASE}/tasks_icsimport?user=${encodeURIComponent(username)}`;
+            const res = await fetch(url, { method: "GET" });
+            if (!res.ok) {
+                console.warn("ICS一覧取得に失敗しました", res.status);
+                return [];
+            }
+            const data = await res.json();
+            // 返却形式: { items:[{ user, ics_url }], count }
+            const items = Array.isArray(data.items) ? data.items : [];
+            return items.map(it => it.ics_url).filter(Boolean);
+        } catch (e) {
+            console.warn("ICS一覧の取得処理で例外が発生しました:", e);
+            return [];
+        }
     }
+
 
     function normalizeIcsUrl(url) {
         if (!url) return "";
@@ -304,15 +317,16 @@ const GanttApp = (() => {
     }
 
     async function loadIcsTasks(past, future) {
-        const sources = getIcsSources();
+        const sources = await getIcsSources();
         const all = [];
         for (const src of sources) {
             const normalized = normalizeIcsUrl(src);
             try {
-                const b64 = b64utf8(normalized);
-                const proxied = `${ICS_GET_ENDPOINT}?u=${encodeURIComponent(b64)}`;
-                const res = await fetch(proxied, { method: 'GET' });
-                if (!res.ok) throw new Error(`proxy status ${res.status}`);
+                // Lambda経由でICSファイルを取得（CORS回避）
+                const b64url = btoa(unescape(encodeURIComponent(normalized)));
+                const proxyUrl = `${API_BASE}/tasks_icsget?u=${b64url}`;
+                const res = await fetch(proxyUrl, { method: 'GET' });
+                if (!res.ok) throw new Error(`ICS取得失敗 status ${res.status}`);
                 const text = await res.text();
 
                 const events = parseICS(text);
@@ -373,12 +387,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyHttps = document.getElementById('copyHttps');
     const closeExport = document.getElementById('closeExport');
 
-    function buildExportLinks(){
+    function buildExportLinks() {
         const https = `${API_BASE}/Tasks_icsexport?username=${encodeURIComponent(username)}`;
         const webcal = https.replace(/^https?:\/\//i, 'webcal://');
         return { https, webcal };
     }
-    function showExportModal(){
+    function showExportModal() {
         const { https, webcal } = buildExportLinks();
         webcalInput.value = webcal;
         httpsInput.value = https;
@@ -386,20 +400,29 @@ document.addEventListener('DOMContentLoaded', () => {
         exportModal.classList.remove('hidden');
         httpsInput.focus(); httpsInput.select();
     }
-    function hideExportModal(){ exportModal.classList.add('hidden'); }
+    function hideExportModal() { exportModal.classList.add('hidden'); }
 
     menuExport.addEventListener('click', () => { menu.classList.remove('open'); showExportModal(); });
     exportBackdrop.addEventListener('click', hideExportModal);
     closeExport.addEventListener('click', hideExportModal);
 
     copyWebcal.addEventListener('click', async () => {
-        try{ await navigator.clipboard.writeText(webcalInput.value); copyWebcal.textContent = 'コピー済み'; setTimeout(()=> copyWebcal.textContent = 'webcal をコピー', 1200); }
-        catch{ webcalInput.select(); document.execCommand('copy'); }
+        try { await navigator.clipboard.writeText(webcalInput.value); copyWebcal.textContent = 'コピー済み'; setTimeout(() => copyWebcal.textContent = 'webcal をコピー', 1200); }
+        catch { webcalInput.select(); document.execCommand('copy'); }
     });
     copyHttps.addEventListener('click', async () => {
-        try{ await navigator.clipboard.writeText(httpsInput.value); copyHttps.textContent = 'コピー済み'; setTimeout(()=> copyHttps.textContent = 'https をコピー', 1200); }
-        catch{ httpsInput.select(); document.execCommand('copy'); }
+        try {
+            await navigator.clipboard.writeText(httpsInput.value);
+            copyHttps.textContent = 'コピー済み';
+            setTimeout(() => copyHttps.textContent = 'https をコピー', 1200);
+        } catch {
+            httpsInput.select();
+            document.execCommand('copy');
+        }
     });
+// Converts a Date object to 'YYYY-MM-DD' format in UTC timezone.
+// Note: The returned date is based on UTC, not local time.
+function formatDate(date) { return date.toISOString().split('T')[0]; }
 });
 
 function formatDate(date) { return date.toISOString().split('T')[0]; }
