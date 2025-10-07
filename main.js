@@ -105,7 +105,15 @@ const GanttApp = (() => {
                     if (task.isIcs) { return; }
                     // Ensure start and end are Date objects
                     const startDate = (start instanceof Date) ? start : new Date(start);
-                    const endDate = (end instanceof Date) ? end : new Date(end);
+                    let endDate = (end instanceof Date) ? end : new Date(end);
+
+                    // --- ここを追加 ---
+                    if (endDate < startDate) {
+                        endDate = new Date(startDate);
+                        endDate.setDate(startDate.getDate());
+                    }
+                    // -----------------
+
                     // JST変換を共通関数で処理
                     const jstStart = toJstDate(startDate);
                     const jstEnd = toJstDate(endDate);
@@ -144,15 +152,26 @@ const GanttApp = (() => {
     async function addOrUpdateTask() {
         const name = document.getElementById("taskName").value || "task";
         const start = document.getElementById("startDate").value;
-        const end = document.getElementById("endDate").value;
+        let end = document.getElementById("endDate").value;
         if (!start || !end) return alert("日付を入力してください。");
 
         if (selectedTaskId) {
+            // 変更時：end < start の場合は自動で end = start + 1日
+            if (new Date(end) < new Date(start)) {
+                const nextDay = new Date(start);
+                nextDay.setDate(nextDay.getDate() + 1);
+                end = formatDate(nextDay);
+            }
             const task = taskList.find(t => t.id === selectedTaskId);
             if (task && task.isIcs) { clearSelection(); return; }
             Object.assign(task, { name, start, end });
             await updateTask(task);
         } else {
+            // 追加時：end < start の場合はアラートを出して中断
+            if (new Date(end) < new Date(start)) {
+                alert("終了日は開始日以降の日付を入力してください。");
+                return;
+            }
             const utcNow = new Date();
             const jstNow = toJstDate(utcNow);
             const yyyymmddhhmmss =
@@ -420,9 +439,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.execCommand('copy');
         }
     });
-// Converts a Date object to 'YYYY-MM-DD' format in UTC timezone.
-// Note: The returned date is based on UTC, not local time.
-function formatDate(date) { return date.toISOString().split('T')[0]; }
+    // Converts a Date object to 'YYYY-MM-DD' format in UTC timezone.
+    // Note: The returned date is based on UTC, not local time.
+    function formatDate(date) { return date.toISOString().split('T')[0]; }
 });
 
 function formatDate(date) { return date.toISOString().split('T')[0]; }
