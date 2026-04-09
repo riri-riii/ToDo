@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>タスク一覧</title>
+  <style>
+    :root{--border:#e5e7eb;--text:#111827;--muted:#6b7280;--bg:#f8fafc;--card:#fff;--primary:#2563eb;--radius:12px;}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px;}
+    .topbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;}
+    .btn{height:36px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;}
+    .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;}
+    table{border-collapse:collapse;width:100%;min-width:980px;}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:14px;white-space:nowrap;}
+    th{background:#f9fafb;text-align:left;position:sticky;top:0;}
+    .muted{color:var(--muted);}
+    td button{height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;margin-right:6px;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <button id="toGantt" class="btn" type="button">ガントチャート</button>
+      <button id="toCreate" class="btn btn-primary" type="button">新規タスク</button>
+      <span class="muted">タスクをクリックすると編集画面へ移動します</span>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>タスク名</th>
+            <th>予定開始日</th>
+            <th>予定終了日</th>
+            <th>進捗</th>
+            <th>実開始日</th>
+            <th>実終了日</th>
+            <th>予定工数</th>
+            <th>実工数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="taskRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="task_list.js"></script>
+</body>
+</html>
