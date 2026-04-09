@@ -1,49 +1,39 @@
 # ToDo (Frappe Gantt ベース)
 
-このプロジェクトは `frappe-gantt` を使ったシンプルな ToDo / ガントチャート表示アプリです。
+このプロジェクトは `frappe-gantt` を使った ToDo / ガントチャートアプリです。
 
-## 改善内容（今回）
+## 画面構成
 
-- GitHub Pages 前提の運用から、Cloudflare Pages へデプロイできる構成を追加
-- GitHub Actions で `main` ブランチ push 時に Cloudflare Pages へ自動デプロイ
-- デプロイ時に必要な設定項目（Secrets / Variables）を README に明記
+- `main.html` : ガントチャート画面
+- `task_list.html` : タスクリスト画面（一覧）
+- `task_form.html` : タスク登録・編集画面
+
+### タスク項目
+
+- 必須: タスク名 / 予定開始日 / 予定終了日 / 進捗（0〜100%を20%刻み）
+- 任意: 実開始日 / 実終了日 / 予定工数 / 実工数
+
+## Cloudflare Pages での公開
+
+### 必要な GitHub 設定
+
+`Settings > Secrets and variables > Actions` に以下を設定:
+
+- Secrets
+  - `CLOUDFLARE_API_TOKEN`
+  - `CLOUDFLARE_ACCOUNT_ID`
+- Variables
+  - `CLOUDFLARE_PAGES_PROJECT`
+
+`main` ブランチへ push すると `.github/workflows/deploy-cloudflare-pages.yml` によりデプロイされます。
 
 ## ローカル確認
-
-このリポジトリはビルド不要な静的サイト構成です。
 
 ```bash
 python3 -m http.server 8080
 ```
 
-起動後、`http://localhost:8080` にアクセスしてください。
-
-## Cloudflare Pages での公開手順
-
-### 1. Cloudflare 側で Pages プロジェクトを作成
-
-- Cloudflare Dashboard → **Workers & Pages** → **Create application** → **Pages**
-- プロジェクト名（例: `todo-app`）を作成
-- フレームワークプリセットは不要（静的サイト）
-
-### 2. GitHub リポジトリに Secrets / Variables を設定
-
-GitHub の `Settings > Secrets and variables > Actions` で以下を設定します。
-
-#### Secrets
-
-- `CLOUDFLARE_API_TOKEN`（Pages デプロイ権限付き）
-- `CLOUDFLARE_ACCOUNT_ID`
-
-#### Variables
-
-- `CLOUDFLARE_PAGES_PROJECT`（Cloudflare Pages のプロジェクト名）
-
-### 3. デプロイ
-
-`main` ブランチへ push すると、自動で Cloudflare Pages にデプロイされます。
-
-手動実行したい場合は GitHub Actions の `Deploy to Cloudflare Pages` を `workflow_dispatch` から実行できます。
+その後 `http://localhost:8080` にアクセス。
 
 ---
 
