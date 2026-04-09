@@ -1,5 +1,5 @@
 import Gantt from './src/index.js';
-import { API_BASE, getAuthUsername, fetchTasks } from './src/task_api.js';
+import { API_BASE, getAuthUsername, fetchTasks, updateTask, getTaskActionState, applyTaskAction } from './src/task_api.js';
 
 const username = getAuthUsername();
 if (!username) {
@@ -175,7 +175,13 @@ async function loadGantt() {
       name: t.name,
       start: t.plannedStart,
       end: t.plannedEnd,
-      progress: Number(t.progress || 0)
+      progress: Number(t.progress || 0),
+      plannedStart: t.plannedStart,
+      plannedEnd: t.plannedEnd,
+      actualStart: t.actualStart,
+      actualEnd: t.actualEnd,
+      plannedHours: t.plannedHours,
+      actualHours: t.actualHours
     }));
 
   const icsTasks = await loadIcsTasks(past, future);
@@ -193,10 +199,23 @@ async function loadGantt() {
     today_button: true,
     auto_move_label: false,
     infinite_padding: true,
-    on_click: (task) => {
+    popup: ({ task, set_title, set_subtitle, set_details, add_action }) => {
+      set_title(task.isIcs ? `${task.name}（取り込み）` : task.name);
+      set_subtitle(`${task.start} ～ ${task.end}`);
+      set_details(`進捗: ${task.progress}%`);
       if (task.isIcs) return;
-      const id = encodeURIComponent(task.orig_id || task.id);
-      window.location.href = `task_form.html?id=${id}`;
+
+      add_action('編集', () => {
+        const id = encodeURIComponent(task.orig_id || task.id);
+        window.location.href = `task_form.html?id=${id}`;
+      });
+
+      const { action, label } = getTaskActionState(task);
+      add_action(label, async () => {
+        const updated = applyTaskAction(task, action);
+        await updateTask(username, task.orig_id || task.id, updated);
+        await loadGantt();
+      });
     }
   });
 

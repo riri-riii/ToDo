@@ -1,4 +1,4 @@
-import { getAuthUsername, fetchTasks } from './src/task_api.js';
+import { getAuthUsername, fetchTasks, updateTask, getTaskActionState, applyTaskAction } from './src/task_api.js';
 
 const username = getAuthUsername();
 if (!username) {
@@ -16,6 +16,7 @@ async function render() {
 
   rows.innerHTML = sorted.map((t) => {
     const id = encodeURIComponent(t.orig_id);
+    const state = getTaskActionState(t);
     return `
       <tr data-id="${h(t.orig_id)}" class="row-link">
         <td>${h(t.name)}</td>
@@ -26,7 +27,10 @@ async function render() {
         <td>${h(t.actualEnd)}</td>
         <td>${h(t.plannedHours)}</td>
         <td>${h(t.actualHours)}</td>
-        <td><button class="edit-btn" data-id="${id}">編集</button></td>
+        <td>
+          <button class="edit-btn" data-id="${id}">編集</button>
+          <button class="state-btn" data-id="${id}" data-action="${state.action}">${state.label}</button>
+        </td>
       </tr>`;
   }).join('');
 
@@ -34,6 +38,19 @@ async function render() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       window.location.href = `task_form.html?id=${btn.dataset.id}`;
+    });
+  });
+
+  rows.querySelectorAll('.state-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const taskId = decodeURIComponent(btn.dataset.id);
+      const action = btn.dataset.action;
+      const target = tasks.find((t) => t.orig_id === taskId);
+      if (!target) return;
+      const updated = applyTaskAction(target, action);
+      await updateTask(username, taskId, updated);
+      await render();
     });
   });
 

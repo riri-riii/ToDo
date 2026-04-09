@@ -37,6 +37,30 @@ export function normalizeTask(raw) {
   };
 }
 
+export function getTaskActionState(task) {
+  if (!task.actualStart) return { action: 'start', label: '開始' };
+  if (task.actualStart && !task.actualEnd) return { action: 'complete', label: '完了' };
+  return { action: 'undo-complete', label: '完了取消' };
+}
+
+export function applyTaskAction(task, action, today = formatDate(new Date())) {
+  const next = { ...task };
+
+  if (action === 'start') {
+    next.actualStart = today;
+    return next;
+  }
+  if (action === 'complete') {
+    next.actualEnd = today;
+    next.progress = 100;
+    return next;
+  }
+
+  next.actualEnd = '';
+  next.progress = 80;
+  return next;
+}
+
 export async function fetchTasks(username) {
   const res = await fetch(`${API_BASE}/tasks?username=${encodeURIComponent(username)}`);
   const raw = await res.json();
